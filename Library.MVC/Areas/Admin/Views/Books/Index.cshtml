@@ -1,0 +1,73 @@
+﻿@model IEnumerable<Library.MVC.Models.Book>
+
+<h2>Books</h2>
+
+<form asp-action="Index" method="get" class="row g-3 mb-4">
+    <div class="col-md-3">
+        <input type="text" name="searchString" value="@ViewBag.CurrentSearch" class="form-control" placeholder="Title or Author..." />
+    </div>
+    <div class="col-md-3">
+        <select name="category" asp-items="@ViewData["Categories"] as SelectList" class="form-select">
+            <option value="">All Categories</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select name="availability" class="form-select">
+            <option value="">All Status</option>
+            <option value="Available">Available</option>
+            <option value="OnLoan">On Loan</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a asp-action="Index" class="btn btn-secondary">Reset</a>
+    </div>
+</form>
+
+<p>
+    <a asp-area="Admin" asp-controller="Books" asp-action="Create" class="btn btn-success">
+        Create New Book
+    </a>
+</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>
+                <a asp-action="Index" asp-route-sortOrder="@ViewData["TitleSortParm"]" asp-route-searchString="@ViewBag.CurrentSearch">Title</a>
+            </th>
+            <th>
+                <a asp-action="Index" asp-route-sortOrder="@ViewData["AuthorSortParm"]" asp-route-searchString="@ViewBag.CurrentSearch">Author</a>
+            </th>
+            <th>ISBN</th>
+            <th>Category</th>
+            <th>Available</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var book in Model)
+        {
+            <tr>
+                <td>@book.Title</td>
+                <td>@book.Author</td>
+                <td>@book.Isbn</td>
+                <td>@book.Category</td>
+                <td>
+                    @if (book.IsAvailable)
+                    {
+                        <span class="badge bg-success">Yes</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning">No</span>
+                    }
+                </td>
+                <td>
+                    <a asp-area="Admin" asp-controller="Books" asp-action="Edit" asp-route-id="@book.Id" class="btn btn-primary btn-sm">Edit</a>
+                    <a asp-area="Admin" asp-controller="Books" asp-action="Delete" asp-route-id="@book.Id" class="btn btn-danger btn-sm">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

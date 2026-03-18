@@ -1,0 +1,33 @@
+﻿@model Library.MVC.Models.ViewModels.LoanVM
+
+<h2>Create New Loan</h2>
+
+<form asp-action="Create" method="post">
+    <div class="mb-3">
+        <label>Member</label>
+        <select asp-for="Loan.MemberId" asp-items="@Model.MemberList" class="form-select">
+            <option disabled selected>-- Select Member --</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label>Available Book</label>
+        <select asp-for="Loan.BookId" asp-items="@Model.BookList" class="form-select">
+            <option disabled selected>-- Select Book --</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Loan Date</label>
+        <input asp-for="Loan.LoanDate" class="form-control" type="date" />
+        <span asp-validation-for="Loan.LoanDate" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Due Date</label>
+        <input asp-for="Loan.DueDate" class="form-control" type="date" />
+        <span asp-validation-for="Loan.DueDate" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-success">Confirm Loan</button>
+</form>

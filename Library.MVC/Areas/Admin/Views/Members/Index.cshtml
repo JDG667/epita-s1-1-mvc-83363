@@ -1,0 +1,33 @@
+﻿@model IEnumerable<Library.MVC.Models.Member>
+
+<h2>Members Management</h2>
+
+<p>
+    <a asp-area="Admin" asp-controller="Members" asp-action="Create" class="btn btn-success">Add New Member</a>
+</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Full Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var member in Model)
+        {
+            <tr>
+                <td>@member.FullName</td>
+                <td>@member.Email</td>
+                <td>@member.Phone</td>
+                <td>
+                    <a asp-area="Admin" asp-controller="Members" asp-action="Create" asp-route-id="@member.Id" class="btn btn-primary btn-sm">Create</a>
+                    <a asp-area="Admin" asp-controller="Members" asp-action="Edit" asp-route-id="@member.Id" class="btn btn-primary btn-sm">Edit</a>
+                    <a asp-area="Admin" asp-controller="Members" asp-action="Delete" asp-route-id="@member.Id" class="btn btn-danger btn-sm">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

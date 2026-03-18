@@ -1,0 +1,10 @@
+﻿@model Library.MVC.Models.Member
+
+<h2>Delete Member</h2>
+<p>Are you sure you want to delete the member: <strong>@Model.FullName</strong>?</p>
+
+<form asp-area="Admin" asp-controller="Members" asp-action="Delete" method="post">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger">Confirm Delete</button>
+    <a asp-area="Admin" asp-controller="Members" asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>

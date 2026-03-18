@@ -1,0 +1,95 @@
+﻿@model IEnumerable<Library.MVC.Models.Loan>
+
+@{
+    ViewData["Title"] = "Loans Management";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Loans Management</h2>
+    <a asp-area="Admin" asp-controller="Loans" asp-action="Create" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> Create New Loan
+    </a>
+
+    <div class="mb-3 d-flex justify-content-end">
+        <form asp-action="DeleteReturned" method="post"
+              onsubmit="return confirm('Warning: this action will delete all history of completed loans. Continue?');">
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i> Clean history (Delete completed loans)
+            </button>
+        </form>
+    </div>
+</div>
+
+<table class="table table-striped table-bordered shadow-sm">
+    <thead class="table-dark">
+        <tr>
+            <th>Book Title</th>
+            <th>Member Name</th>
+            <th>Loan Date</th>
+            <th>Due Date</th>
+            <th>Returned Date</th>
+            <th style="width: 200px;">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+
+        @if (!Model.Any())
+        {
+            <tr>
+                <td colspan="6" class="text-center">No loans found in the database.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var loan in Model)
+            {
+                <tr>
+                    <td><strong>@loan.Book?.Title</strong></td>
+                    <td>@loan.Member?.FullName</td>
+                    <td>@loan.LoanDate.ToShortDateString()</td>
+                    <td>@loan.DueDate.ToShortDateString()</td>
+
+                    
+                    <td>
+                        @if (loan.ReturnedDate != null)
+                        {
+                            <span class="badge bg-success">
+                                <i class="bi bi-check-lg"></i> Returned (@loan.ReturnedDate?.ToShortDateString())
+                            </span>
+                        }
+                        else if (DateTime.Now > loan.DueDate)
+                        {
+                            <span class="badge bg-danger">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Overdue
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-info text-dark">
+                                <i class="bi bi-clock-history"></i> Active
+                            </span>
+                        }
+                    </td>
+
+                    
+                    <td>
+                        @if (loan.ReturnedDate == null)
+                        {
+                            <form asp-area="Admin" asp-controller="Loans" asp-action="MarkAsReturned" method="post"
+                                  onsubmit="return confirm('Confirm that this book has been returned?');">
+                                <input type="hidden" name="id" value="@loan.Id" />
+                                <button type="submit" class="btn btn-primary btn-sm w-100">
+                                    Mark as Returned
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span class="text-muted small">No actions available</span>
+                        }
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

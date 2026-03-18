@@ -1,0 +1,55 @@
+﻿@model List<Microsoft.AspNetCore.Identity.IdentityRole>
+
+@{
+    ViewData["Title"] = "Roles Management";
+}
+
+<h2>Roles Management</h2>
+
+<!-- Form to create roles -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form asp-area="Admin" asp-controller="Roles" asp-action="Create" method="post" class="row g-3">
+            <div class="col-auto">
+                <input type="text" name="roleName" class="form-control" placeholder="Enter new role name" required />
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-success">Create Role</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- List of roles -->
+<table class="table table-striped table-bordered">
+    <thead class="table-dark">
+        <tr>
+            <th>Role Name</th>
+            <th style="width: 150px;">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (!Model.Any())
+        {
+            <tr>
+                <td colspan="2" class="text-center">No roles found.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var role in Model)
+            {
+                <tr>
+                    <td>@role.Name</td>
+                    <td>
+                        <form asp-area="Admin" asp-controller="Roles" asp-action="Delete" method="post"
+                              onsubmit="return confirm('Are you sure you want to delete this role?');">
+                            <input type="hidden" name="id" value="@role.Id" />
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
