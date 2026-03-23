@@ -14,26 +14,26 @@ namespace Library.MVC.Data
         //add the databases for each models
         //needed for CRUD operations with EF Core
 
-        public DbSet<Book> Books { get; set; }
-        public DbSet<Member> Members { get; set; }
-        public DbSet<Loan> Loans { get; set; }
+        public DbSet<Premises> Premises { get; set; }
+        public DbSet<FollowUp> FollowUps { get; set; }
+        public DbSet<Inspection> Inspections { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
 
-            builder.Entity<Loan>()
-                .HasOne(l => l.Book)
+            builder.Entity<Inspection>()
+                .HasOne(l => l.Premises)
                 .WithMany()
-                .HasForeignKey(l => l.BookId)
+                .HasForeignKey(l => l.PremisesId)
                 .OnDelete(DeleteBehavior.Restrict);
 
 
-            builder.Entity<Loan>()
-                .HasOne(l => l.Member)
+            builder.Entity<FollowUp>()
+                .HasOne(l => l.Inspection)
                 .WithMany()
-                .HasForeignKey(l => l.MemberId)
+                .HasForeignKey(l => l.InspectionId)
                 .OnDelete(DeleteBehavior.Restrict);
 
         }

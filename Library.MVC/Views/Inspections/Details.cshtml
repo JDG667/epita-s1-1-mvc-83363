@@ -1,0 +1,47 @@
+﻿@model Library.MVC.Models.Inspection
+
+@{
+    ViewData["Title"] = "Full Inspection Report";
+}
+
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header @(Model.Score >= 70 ? "bg-success" : "bg-danger") text-white">
+            <h3 class="mb-0">Inspection Report : @Model.Premises?.Name</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Date of visit :</strong> @Model.InspectionDate.ToLongDateString()</p>
+                    <p><strong>Location :</strong> @Model.Premises?.Address, @Model.Premises?.Town</p>
+                    <p><strong>Risk level:</strong> @Model.Premises?.RiskRating</p>
+                </div>
+                <div class="col-md-6 text-center border-start">
+                    <h4 class="text-muted">Final score</h4>
+                    <h1 class="display-3">@Model.Score<small class="text-muted">/100</small></h1>
+                    <span class="badge @(Model.Score >= 70 ? "bg-success" : "bg-danger") fs-5">
+                        @Model.Outcome
+                    </span>
+                </div>
+            </div>
+
+            <hr />
+
+            <div class="mt-3">
+                <h5>Notes:</h5>
+                <div class="p-3 bg-light border rounded italic">
+                    "@Model.Notes"
+                </div>
+            </div>
+        </div>
+        <div class="card-footer bg-white text-end">
+            <a asp-action="Index" class="btn btn-secondary">Back to list</a>
+
+            @* Seul l'Admin ou l'Inspecteur peut modifier ce rapport *@
+            @if (!User.IsInRole("Member"))
+            {
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Modify checkup</a>
+            }
+        </div>
+    </div>
+</div>

@@ -1,89 +1,109 @@
 ﻿using Bogus;
 using Library.MVC.Models;
-using Library.MVC.Data;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace Library.MVC.Data
 {
     public static class DbInitializer
     {
-        public static void Seed(ApplicationDbContext context)
+        public static async Task InitializeAsync(IServiceProvider serviceProvider)
         {
+            var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
+            var userManager = serviceProvider.GetRequiredService<UserManager<IdentityUser>>();
+            var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-            if (context.Loans.Any()) context.Loans.RemoveRange(context.Loans);
-            if (context.Books.Any()) context.Books.RemoveRange(context.Books);
-            if (context.Members.Any()) context.Members.RemoveRange(context.Members);
+            context.Database.EnsureCreated();
 
-            context.SaveChanges();
+            // --- ÉTAPE 0 : NETTOYAGE DES DONNÉES EXISTANTES ---
+            context.FollowUps.RemoveRange(context.FollowUps);
+            context.Inspections.RemoveRange(context.Inspections);
+            context.Premises.RemoveRange(context.Premises);
+            await context.SaveChangesAsync();
 
-
-            if (!context.Books.Any())
+            // --- 1. ROLES (Ajout de Member) ---
+            string[] roles = { "Admin", "Inspector", "Member" };
+            foreach (var role in roles)
             {
-                var bookFaker = new Faker<Book>()
-                    .RuleFor(b => b.Title, f => f.Lorem.Sentence(3).TrimEnd('.'))
-                    .RuleFor(b => b.Author, f => f.Name.FullName())
-                    .RuleFor(b => b.Isbn, f => f.Random.Replace("###-##########"))
-                    .RuleFor(b => b.Category, f => f.PickRandom(new[] {
-                        "Fiction",
-                        "Science Fiction",
-                        "Fantasy",
-                        "Thriller",
-                        "History",
-                        "Biography",
-                        "Science",
-                        "Technology",
-                        "Arts",
-                        "Children",
-                        "Graphic Novels"
-                    }));
-
-                context.Books.AddRange(bookFaker.Generate(20));
-                context.SaveChanges();
+                if (!await roleManager.RoleExistsAsync(role))
+                    await roleManager.CreateAsync(new IdentityRole(role));
             }
 
-            if (!context.Members.Any())
+            // --- 1.5. USERS (Admin, Inspector, Member) ---
+            var password = "Password123!";
+            var users = new (string Email, string Role)[]
             {
-                var memberFaker = new Faker<Member>()
-                    .RuleFor(m => m.FullName, f => f.Name.FullName())
-                    .RuleFor(m => m.Email, f => f.Internet.Email())
-                    .RuleFor(m => m.Phone, f => f.Phone.PhoneNumber("###-###-####"));
+                ("admin@safety.com", "Admin"),
+                ("inspector@safety.com", "Inspector"),
+                ("member@safety.com", "Member") // Voici ton utilisateur Member
+            };
 
-                context.Members.AddRange(memberFaker.Generate(10));
-                context.SaveChanges();
-            }
-
-     
-            if (!context.Loans.Any())
+            foreach (var u in users)
             {
-                var books = context.Books.ToList();
-                var members = context.Members.ToList();
-                var fixedNow = new DateTime(2026, 3, 15, 12, 0, 0);
-
-                var loanFaker = new Faker<Loan>()
-                    .UseSeed(1337)
-                    .UseDateTimeReference(fixedNow)
-                    .RuleFor(l => l.BookId, f => f.PickRandom(books).Id)
-                    .RuleFor(l => l.MemberId, f => f.PickRandom(members).Id)
-                    .RuleFor(l => l.LoanDate, f => f.Date.Recent(30))
-                    .RuleFor(l => l.DueDate, (f, l) => l.LoanDate.AddDays(14))
-                    .RuleFor(l => l.ReturnedDate, (f, l) =>
-                    {
-                        bool isPastDue = fixedNow > l.DueDate;
-
-                        if (isPastDue)
-                        {
-                            return f.Random.Bool(0.8f) ? f.Date.Between(l.LoanDate, l.DueDate) : null;
-                        }
-                        else
-                        {
-                            return f.Random.Bool(0.2f) ? f.Date.Between(l.LoanDate, fixedNow) : null;
-                        }
-                    });
-
-                var generatedLoans = loanFaker.Generate(25);
-                context.Loans.AddRange(generatedLoans);
-                context.SaveChanges();
+                if (await userManager.FindByEmailAsync(u.Email) == null)
+                {
+                    var newUser = new IdentityUser { UserName = u.Email, Email = u.Email, EmailConfirmed = true };
+                    await userManager.CreateAsync(newUser, password);
+                    await userManager.AddToRoleAsync(newUser, u.Role);
+                }
             }
-     
+
+            // --- 2. SEED 12 PREMISES ---
+            if (!context.Premises.Any())
+            {
+                var towns = new[] { "London", "Manchester", "Liverpool" };
+                var ratings = new[] { "Low", "Medium", "High" };
+
+                var premisesFaker = new Faker<Premises>()
+                    .RuleFor(p => p.Name, f => f.Company.CompanyName().Replace(",", "") + " " + f.PickRandom("Kitchen", "Bistro", "Cafe", "Grill"))
+                    .RuleFor(p => p.Address, f => f.Address.BuildingNumber() + " " + f.Address.StreetName())
+                    .RuleFor(p => p.Town, f => f.PickRandom(towns))
+                    .RuleFor(p => p.RiskRating, f => f.PickRandom(ratings));
+
+                context.Premises.AddRange(premisesFaker.Generate(12));
+                await context.SaveChangesAsync();
             }
+
+            // --- 3. SEED 25 INSPECTIONS ---
+            if (!context.Inspections.Any())
+            {
+                var premisesIds = context.Premises.Select(p => p.Id).ToList();
+
+                var inspectionFaker = new Faker<Inspection>()
+                    .RuleFor(i => i.InspectionDate, f => f.Date.Recent(60))
+                    .RuleFor(i => i.Score, f => f.Random.Int(20, 100))
+                    .RuleFor(i => i.Outcome, (f, i) => i.Score >= 70 ? "Pass" : "Fail")
+                    .RuleFor(i => i.Notes, f => f.Lorem.Sentence())
+                    .RuleFor(i => i.PremisesId, f => f.PickRandom(premisesIds));
+
+                context.Inspections.AddRange(inspectionFaker.Generate(25));
+                await context.SaveChangesAsync();
+            }
+
+            // --- 4. SEED 10 FOLLOW-UPS (Liés uniquement aux inspections Fail) ---
+            if (!context.FollowUps.Any())
+            {
+                // On ne prend que les inspections qui ont échoué
+                var failedIds = context.Inspections
+                    .Where(i => i.Score < 70)
+                    .Select(i => i.Id)
+                    .ToList();
+
+                if (failedIds.Any())
+                {
+                    int count = 0;
+                    var followUpFaker = new Faker<FollowUp>()
+                        .RuleFor(f => f.InspectionId, f => failedIds[count++])
+                        .RuleFor(f => f.DueDate, (f, u) => count <= 4
+                            ? f.Date.Past(1)  // Overdue
+                            : f.Date.Soon(14)) // Future
+                        .RuleFor(f => f.Status, (f, u) => count <= 4 ? "Open" : "Closed");
+
+                    // On en génère 10 (ou le max possible si moins de 10 échecs)
+                    context.FollowUps.AddRange(followUpFaker.Generate(Math.Min(10, failedIds.Count)));
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
     }
 }

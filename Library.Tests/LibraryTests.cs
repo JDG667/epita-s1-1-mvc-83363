@@ -1,94 +1,67 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Sqlite; // AJOUTE CECI (nécessite le package NuGet Microsoft.Data.Sqlite)
 using Library.MVC.Models;
-using Xunit;
 using Library.MVC.Data;
+using Xunit;
 
 namespace Library.Tests
 {
     public class LibraryTests
     {
+        // 1. LA MÉTHODE VA ICI (C'est une méthode privée utilitaire)
+        private ApplicationDbContext GetDatabaseContext()
+        {
+            // Remplace par ta chaîne de connexion SQL Server
+            // Pointe bien vers la base de TEST, pas la base de DEV
+            var connectionString = "Server=(localdb)\\mssqllocaldb;Database=Library_TestDB;Trusted_Connection=True;MultipleActiveResultSets=true";
 
-            
-            [Fact]
-            public void CreateLoan_WhenBookAlreadyOnActiveLoan_ShouldDetectConflict()
-            {
-            
-                var activeLoans = new List<Loan> {
-                new Loan { BookId = 10, ReturnedDate = null }
-            };
-                int newLoanBookId = 10;
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseSqlServer(connectionString)
+                .Options;
 
-            
-                bool isAlreadyLoaned = activeLoans.Any(l => l.BookId == newLoanBookId && l.ReturnedDate == null);
+            var context = new ApplicationDbContext(options);
 
-                // Assert
-                Assert.True(isAlreadyLoaned, "the system shouldn't loan");
-            }
+            // CRITIQUE : Supprime et recrée la base à chaque test 
+            // pour être sûr de repartir de zéro (Isolation)
+            context.Database.EnsureDeleted();
+            context.Database.EnsureCreated();
 
-            
-            [Fact]
-            public void MarkAsReturned_SetsReturnedDate_AndLogicChecksOut()
-            {
-                // Arrange
-                var loan = new Loan { Id = 1, ReturnedDate = null };
+            return context;
+        }
 
-            
-                loan.ReturnedDate = DateTime.Now;
+        // 2. TES TESTS UTILISENT CETTE MÉTHODE
+        [Fact]
+        public void Test_Dashboard_Counts_Consistent()
+        {
+            // On appelle la méthode pour avoir une base toute neuve
+            using var context = GetDatabaseContext();
 
-                // Assert
-                Assert.NotNull(loan.ReturnedDate);
-                Assert.True(loan.ReturnedDate <= DateTime.Now);
-            }
+            // Arrange
+            context.Premises.Add(new Premises { Name = "Test Restaurant", Town = "Montreal" });
+            context.SaveChanges();
 
-            
-            [Fact]
-            public void BookSearch_FiltersByTitleOrAuthor_Correct()
-            {
-                // Arrange
-                var books = new List<Book> {
-                new Book { Title = "Le Petit Prince", Author = "Saint-Exupéry" },
-                new Book { Title = "L'Étranger", Author = "Albert Camus" },
-                new Book { Title = "C#", Author = "Inconnu" }
-            }.AsQueryable();
-                string searchString = "Camus";
+            // Act
+            var count = context.Premises.Count();
 
-                var results = books.Where(b => b.Title.Contains(searchString) || b.Author.Contains(searchString)).ToList();
+            // Assert
+            Assert.Equal(1, count);
+        }
 
-                // Assert
-                Assert.Single(results);
-                Assert.Equal("Albert Camus", results[0].Author);
-            }
+        [Fact]
+        public void Test_FollowUp_Overdue_Logic()
+        {
+            using var context = GetDatabaseContext();
 
-            [Fact]
-            public void OverdueLogic_DetectsLateReturn_WhenDatePassed()
-            {
-                // Arrange
-                var loan = new Loan
-                {
-                    DueDate = DateTime.Now.AddDays(-5), 
-                    ReturnedDate = null                 
-                };
+            // Arrange
+            var fu = new FollowUp { DueDate = DateTime.Now.AddDays(-1), Status = "Pending" };
+            context.FollowUps.Add(fu);
+            context.SaveChanges();
 
-                bool isOverdue = loan.DueDate < DateTime.Now && loan.ReturnedDate == null;
+            // Act
+            var isOverdue = fu.DueDate < DateTime.Now && fu.Status != "Closed";
 
-                // Assert
-                Assert.True(isOverdue, "The loan should be marked late");
-            }
-
-            [Fact]
-            public void RolePage_Access_OnlyForAdminRole()
-            {
-                // Arrange
-                string userRole = "Member"; 
-                string requiredRole = "Admin";
-
-                // Act
-                bool hasAccess = (userRole == requiredRole);
-
-                // Assert
-                Assert.False(hasAccess, "A member should not have access to admin");
-            }
+            // Assert
+            Assert.True(isOverdue);
         }
     }
-
-
+}

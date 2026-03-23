@@ -1,0 +1,36 @@
+﻿@model IEnumerable<Library.MVC.Models.FollowUp>
+
+@{
+    ViewData["Title"] = "Follow-Up Tasks";
+}
+
+<h1>List of Follow-Ups</h1>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Establishment</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                @* On utilise .Inspection car c'est un FollowUp *@
+                <td>@item.Inspection?.InspectionDate.ToShortDateString()</td>
+                <td>@item.Inspection?.Premises?.Name</td>
+                <td>
+                    <span class="badge @(item.Status == "Open" ? "bg-warning" : "bg-success")">
+                        @item.Status
+                    </span>
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-primary">Edit</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -3,39 +3,61 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Library.MVC</title>
+    <title>@ViewData["Title"] - Food Safety Portal</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Library.MVC.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 </head>
 <body>
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Library.MVC</a>
+                <a class="navbar-brand fw-bold" asp-area="" asp-controller="Home" asp-action="Index text-primary">
+                    <i class="bi bi-shield-check"></i> SafetyPortal
+                </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-                        @* show if admin *@
-                        @if (User.IsInRole("Admin"))
+
+                        @* 1. ACCÈS TOUS UTILISATEURS CONNECTÉS *@
+                        @if (User.Identity != null && User.Identity.IsAuthenticated)
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="Admin" asp-controller="Books" asp-action="Index">Books</a>
+                                <a class="nav-link text-dark" asp-controller="Dashboard" asp-action="Index">
+                                    <i class="bi bi-speedometer2"></i> Dashboard
+                                </a>
                             </li>
+
+                            @* 2. ACCÈS ADMIN & INSPECTOR (Gestion active) *@
+                            //@if (User.IsInRole("Admin") || User.IsInRole("Inspector"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="Premises" asp-action="Index">Premises</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="Inspections" asp-action="Index">Inspections</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="FollowUps" asp-action="Index">Follow-Ups</a>
+                                </li>
+                            }
+
+                            @* 3. ACCÈS VIEWER / MANAGER (Lecture seule des listes si besoin) *@
+                            @if (User.IsInRole("Viewer"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-muted" asp-controller="Inspections" asp-action="Index">View Logs</a>
+                                </li>
+                            }
+                        }
+                        else
+                        {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="Admin" asp-controller="Members" asp-action="Index">Members</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="Admin" asp-controller="Loans" asp-action="Index">Loans</a>
+                                <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">Home</a>
                             </li>
                         }
                     </ul>
@@ -46,13 +68,20 @@
     </header>
     <div class="container">
         <main role="main" class="pb-3">
+            @* Affichage du rôle actuel pour t'aider à débugger *@
+            @if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                <div class="text-end mb-2">
+                    <small class="badge bg-secondary">Role: @(User.IsInRole("Admin") ? "Admin" : User.IsInRole("Inspector") ? "Inspector" : "Viewer")</small>
+                </div>
+            }
             @RenderBody()
         </main>
     </div>
 
     <footer class="border-top footer text-muted">
         <div class="container">
-            &copy; 2026 - Library.MVC - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            &copy; 2026 - Food Safety Management - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>

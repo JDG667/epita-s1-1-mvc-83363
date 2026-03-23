@@ -1,0 +1,36 @@
+﻿@model Library.MVC.Models.Inspection
+
+<h1>Edit Inspection Report</h1>
+<hr />
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Edit">
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="PremisesId" />
+
+            <div class="mb-3">
+                <label class="form-label">Establishment</label>
+                <input class="form-control" value="@Model.Premises?.Name" disabled />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="InspectionDate" class="form-label">Date</label>
+                <input asp-for="InspectionDate" class="form-control" type="date" />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Score" class="form-label">Score (0-100)</label>
+                <input asp-for="Score" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Notes" class="form-label">Inspector's Notes</label>
+                <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Notes" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Update Report</button>
+            <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>

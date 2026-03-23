@@ -1,0 +1,67 @@
+﻿@model IEnumerable<Library.MVC.Models.Inspection>
+
+@{
+    ViewData["Title"] = "Inspection Logs";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Inspection Reports</h1>
+    @* Seuls l'Admin et l'Inspecteur peuvent enregistrer de nouvelles inspections *@
+    @if (User.IsInRole("Admin") || User.IsInRole("Inspector"))
+    {
+        <a asp-action="Create" class="btn btn-success">Log New Inspection</a>
+    }
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <table class="table table-bordered table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Date</th>
+                    <th>Premises Name</th>
+                    <th>Score</th>
+                    <th>Result</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.InspectionDate.ToShortDateString()</td>
+                        <td>@item.Premises?.Name</td>
+                        <td>
+                            <span class="fw-bold @(item.Score < 50 ? "text-danger" : "text-success")">
+                                @item.Score / 100
+                            </span>
+                        </td>
+                        <td>
+                            @if (item.Score < 50)
+                            {
+                                <span class="badge bg-danger">FAIL</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">PASS</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info text-white">Full Report</a>
+
+                            @* Si l'inspection a échoué (Score < 50), on affiche le bouton de suivi *@
+                            @if ((User.IsInRole("Admin") || User.IsInRole("Inspector")) && item.Score < 50)
+                            {
+                                @* CORRECTION ICI : Utilisation de asp-route-id pour correspondre au paramètre du contrôleur *@
+                                <a asp-controller="FollowUps"
+                                   asp-action="Create"
+                                   asp-route-id="@item.Id"
+                                   class="btn btn-sm btn-warning">Schedule Follow-up</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
