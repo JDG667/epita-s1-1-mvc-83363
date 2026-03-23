@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Sqlite; // AJOUTE CECI (nécessite le package NuGet Microsoft.Data.Sqlite)
 using Library.MVC.Models;
 using Library.MVC.Data;
 using Xunit;
