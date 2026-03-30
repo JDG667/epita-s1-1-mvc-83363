@@ -1,75 +1,66 @@
+using Microsoft.EntityFrameworkCore;
 using Library.MVC.Models;
+using Library.MVC.Data;
 using Xunit;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Library.Tests
 {
     public class LibraryTests
     {
-        [Fact]
-        public void Test1_OverdueFollowUps_ReturnsCorrectItems()
+        // 1. LA MÉTHODE VA ICI (C'est une méthode privée utilitaire)
+        private ApplicationDbContext GetDatabaseContext()
         {
-            // Arrange : Au lieu d'une DB, on utilise une simple Liste C#
-            var followUps = new List<FollowUp>
-            {
-                new FollowUp { DueDate = DateTime.Now.AddDays(-10), Status = "Pending" }, // En retard
-                new FollowUp { DueDate = DateTime.Now.AddDays(10), Status = "Pending" }   // Futur
-            };
+            // Remplace par ta chaîne de connexion SQL Server
+            // Pointe bien vers la base de TEST, pas la base de DEV
+            var connectionString = "Server=(localdb)\\mssqllocaldb;Database=Library_TestDB;Trusted_Connection=True;MultipleActiveResultSets=true";
 
-            // Act : On filtre la liste comme on le ferait avec LINQ
-            var overdue = followUps.Where(f => f.DueDate < DateTime.Now && f.Status != "Closed").ToList();
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseSqlServer(connectionString)
+                .Options;
 
-            // Assert
-            Assert.Single(overdue);
+            var context = new ApplicationDbContext(options);
+
+            // CRITIQUE : Supprime et recrée la base à chaque test 
+            // pour être sûr de repartir de zéro (Isolation)
+            context.Database.EnsureDeleted();
+            context.Database.EnsureCreated();
+
+            return context;
         }
 
+        // 2. TES TESTS UTILISENT CETTE MÉTHODE
         [Fact]
-        public void Test2_FollowUp_CannotBeClosed_WithoutClosedDate()
+        public void Test_Dashboard_Counts_Consistent()
         {
-            // Arrange : Un objet avec Status "Closed" mais sans date
-            var followUp = new FollowUp
-            {
-                Status = "Closed",
-                ClosedDate = null
-            };
+            // On appelle la méthode pour avoir une base toute neuve
+            using var context = GetDatabaseContext();
 
-            // Act : Logique métier (Si c'est fermé, ClosedDate ne doit pas être null)
-            bool isValid = !(followUp.Status == "Closed" && !followUp.ClosedDate.HasValue);
-
-            // Assert
-            Assert.False(isValid, "Un suivi fermé doit avoir une date de fermeture.");
-        }
-
-        [Fact]
-        public void Test3_Dashboard_Counts_Consistent_With_Data()
-        {
-            // Arrange : Simulation de données dans une liste
-            var premisesList = new List<Premises>
-            {
-                new Premises { Name = "Bakery" },
-                new Premises { Name = "Cafe" }
-            };
+            // Arrange
+            context.Premises.Add(new Premises { Name = "Test Restaurant", Town = "Montreal" });
+            context.SaveChanges();
 
             // Act
-            var count = premisesList.Count;
+            var count = context.Premises.Count();
 
             // Assert
-            Assert.Equal(2, count);
+            Assert.Equal(1, count);
         }
 
         [Fact]
-        public void Test4_Inspection_Outcome_Logic_IsCorrect()
+        public void Test_FollowUp_Overdue_Logic()
         {
-            // Arrange
-            var inspection = new Inspection { Score = 85 };
+            using var context = GetDatabaseContext();
 
-            // Act : Logique de décision du résultat
-            inspection.Outcome = inspection.Score >= 70 ? "Pass" : "Fail";
+            // Arrange
+            var fu = new FollowUp { DueDate = DateTime.Now.AddDays(-1), Status = "Pending" };
+            context.FollowUps.Add(fu);
+            context.SaveChanges();
+
+            // Act
+            var isOverdue = fu.DueDate < DateTime.Now && fu.Status != "Closed";
 
             // Assert
-            Assert.Equal("Pass", inspection.Outcome);
+            Assert.True(isOverdue);
         }
     }
 }
