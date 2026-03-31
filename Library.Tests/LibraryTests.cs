@@ -58,25 +58,59 @@ public class FollowUpTests
         Assert.False(isValid, "A closed follow-up must have a ClosedDate.");
     }
 
-    // TEST 3 : Cohérence des compteurs du Dashboard (In-Memory)
     [Fact]
     public void DashboardCounts_AreConsistent_WithData()
     {
-        // Arrange
+        // 1. Arrange
         using var context = GetDbContext();
-        context.Inspections.AddRange(new List<Inspection>
+
+        // On crée un établissement complet (tous les champs [Required])
+        var premises = new Premises
         {
-            new Inspection { Id = 1, Score = 80, Outcome = "Pass" },
-            new Inspection { Id = 2, Score = 30, Outcome = "Fail" },
-            new Inspection { Id = 3, Score = 40, Outcome = "Fail" }
-        });
+            Id = 1,
+            Name = "Test Shop",
+            Address = "123 Street",
+            Town = "TestVille",      // Ajouté car requis
+            RiskRating = "Medium"     // Ajouté car requis
+        };
+        context.Premises.Add(premises);
+
+        context.Inspections.AddRange(new List<Inspection>
+    {
+        new Inspection {
+            Id = 1,
+            Score = 80,
+            Outcome = "Pass",
+            Notes = "Valid",
+            PremisesId = 1,
+            InspectionDate = DateTime.Now
+        },
+        new Inspection {
+            Id = 2,
+            Score = 30,
+            Outcome = "Fail",
+            Notes = "Issues",
+            PremisesId = 1,
+            InspectionDate = DateTime.Now
+        },
+        new Inspection {
+            Id = 3,
+            Score = 40,
+            Outcome = "Fail",
+            Notes = "More issues",
+            PremisesId = 1,
+            InspectionDate = DateTime.Now
+        }
+    });
+
+        // Cette fois-ci, SaveChanges() va passer !
         context.SaveChanges();
 
-        // Act
+        // 2. Act
         var totalInspections = context.Inspections.Count();
         var failedInspections = context.Inspections.Count(i => i.Score < 50);
 
-        // Assert
+        // 3. Assert
         Assert.Equal(3, totalInspections);
         Assert.Equal(2, failedInspections);
     }
