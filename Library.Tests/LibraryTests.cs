@@ -1,94 +1,134 @@
-using Microsoft.EntityFrameworkCore;
-using Library.MVC.Models;
 using Xunit;
+using Microsoft.EntityFrameworkCore;
 using Library.MVC.Data;
+using Library.MVC.Models;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
-namespace Library.Tests
+public class FollowUpTests
 {
-    public class LibraryTests
+    // Utilitaire pour créer un contexte de base de données en mémoire vierge
+    private ApplicationDbContext GetDbContext()
     {
-
-            
-            [Fact]
-            public void CreateLoan_WhenBookAlreadyOnActiveLoan_ShouldDetectConflict()
-            {
-            
-                var activeLoans = new List<Loan> {
-                new Loan { BookId = 10, ReturnedDate = null }
-            };
-                int newLoanBookId = 10;
-
-            
-                bool isAlreadyLoaned = activeLoans.Any(l => l.BookId == newLoanBookId && l.ReturnedDate == null);
-
-                // Assert
-                Assert.True(isAlreadyLoaned, "the system shouldn't loan");
-            }
-
-            
-            [Fact]
-            public void MarkAsReturned_SetsReturnedDate_AndLogicChecksOut()
-            {
-                // Arrange
-                var loan = new Loan { Id = 1, ReturnedDate = null };
-
-            
-                loan.ReturnedDate = DateTime.Now;
-
-                // Assert
-                Assert.NotNull(loan.ReturnedDate);
-                Assert.True(loan.ReturnedDate <= DateTime.Now);
-            }
-
-            
-            [Fact]
-            public void BookSearch_FiltersByTitleOrAuthor_Correct()
-            {
-                // Arrange
-                var books = new List<Book> {
-                new Book { Title = "Le Petit Prince", Author = "Saint-Exupéry" },
-                new Book { Title = "L'Étranger", Author = "Albert Camus" },
-                new Book { Title = "C#", Author = "Inconnu" }
-            }.AsQueryable();
-                string searchString = "Camus";
-
-                var results = books.Where(b => b.Title.Contains(searchString) || b.Author.Contains(searchString)).ToList();
-
-                // Assert
-                Assert.Single(results);
-                Assert.Equal("Albert Camus", results[0].Author);
-            }
-
-            [Fact]
-            public void OverdueLogic_DetectsLateReturn_WhenDatePassed()
-            {
-                // Arrange
-                var loan = new Loan
-                {
-                    DueDate = DateTime.Now.AddDays(-5), 
-                    ReturnedDate = null                 
-                };
-
-                bool isOverdue = loan.DueDate < DateTime.Now && loan.ReturnedDate == null;
-
-                // Assert
-                Assert.True(isOverdue, "The loan should be marked late");
-            }
-
-            [Fact]
-            public void RolePage_Access_OnlyForAdminRole()
-            {
-                // Arrange
-                string userRole = "Member"; 
-                string requiredRole = "Admin";
-
-                // Act
-                bool hasAccess = (userRole == requiredRole);
-
-                // Assert
-                Assert.False(hasAccess, "A member should not have access to admin");
-            }
-        }
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        return new ApplicationDbContext(options);
     }
 
+    // TEST 1 : Vérifier que la requête Overdue retourne les bons éléments
+    [Fact]
+    public void OverdueFollowUps_ReturnsOnlyCorrectItems()
+    {
+        // Arrange
+        using var context = GetDbContext();
+        var now = DateTime.Now;
+        context.FollowUps.AddRange(new List<FollowUp>
+        {
+            new FollowUp { Id = 1, Status = "Open", DueDate = now.AddDays(-5) }, // En retard
+            new FollowUp { Id = 2, Status = "Open", DueDate = now.AddDays(5) },  // Pas encore
+            new FollowUp { Id = 3, Status = "Closed", DueDate = now.AddDays(-10) } // Clos (ne doit pas compter)
+        });
+        context.SaveChanges();
 
+        // Act
+        var overdueCount = context.FollowUps.Count(f => f.Status == "Open" && f.DueDate < now);
+
+        // Assert
+        Assert.Equal(1, overdueCount);
+    }
+
+    // TEST 2 : Un suivi ne peut pas être clos sans ClosedDate (Logique métier)
+    [Fact]
+    public void FollowUp_CannotBeClosed_WithoutClosedDate()
+    {
+        // Arrange
+        var followUp = new FollowUp
+        {
+            Status = "Closed",
+            ClosedDate = null // Invalide selon ta règle
+        };
+
+        // Act & Assert
+        // Ici on teste la logique de validation simple
+        bool isValid = (followUp.Status == "Closed" && followUp.ClosedDate.HasValue) || (followUp.Status == "Open");
+
+        Assert.False(isValid, "A closed follow-up must have a ClosedDate.");
+    }
+
+    [Fact]
+    public void DashboardCounts_AreConsistent_WithData()
+    {
+        // 1. Arrange
+        using var context = GetDbContext();
+
+        // On crée un établissement complet (tous les champs [Required])
+        var premises = new Premises
+        {
+            Id = 1,
+            Name = "Test Shop",
+            Address = "123 Street",
+            Town = "TestVille",      // Ajouté car requis
+            RiskRating = "Medium"     // Ajouté car requis
+        };
+        context.Premises.Add(premises);
+
+        context.Inspections.AddRange(new List<Inspection>
+    {
+        new Inspection {
+            Id = 1,
+            Score = 80,
+            Outcome = "Pass",
+            Notes = "Valid",
+            PremisesId = 1,
+            InspectionDate = DateTime.Now
+        },
+        new Inspection {
+            Id = 2,
+            Score = 30,
+            Outcome = "Fail",
+            Notes = "Issues",
+            PremisesId = 1,
+            InspectionDate = DateTime.Now
+        },
+        new Inspection {
+            Id = 3,
+            Score = 40,
+            Outcome = "Fail",
+            Notes = "More issues",
+            PremisesId = 1,
+            InspectionDate = DateTime.Now
+        }
+    });
+
+        // Cette fois-ci, SaveChanges() va passer !
+        context.SaveChanges();
+
+        // 2. Act
+        var totalInspections = context.Inspections.Count();
+        var failedInspections = context.Inspections.Count(i => i.Score < 50);
+
+        // 3. Assert
+        Assert.Equal(3, totalInspections);
+        Assert.Equal(2, failedInspections);
+    }
+
+    // TEST 4 : Simulation d'autorisation (Vérification des rôles)
+    [Theory]
+    [InlineData("Inspector", true)]
+    [InlineData("Viewer", false)]
+    public void RoleAuthorization_InspectorCanLogInspection_ViewerCannot(string role, bool expectedAccess)
+    {
+        // Arrange
+        // On définit qui a le droit de créer
+        string[] allowedRoles = { "Admin", "Inspector" };
+
+        // Act
+        bool canAccess = allowedRoles.Contains(role);
+
+        // Assert
+        Assert.Equal(expectedAccess, canAccess);
+    }
+}

@@ -1,0 +1,47 @@
+﻿@model Library.MVC.Models.Inspection
+
+
+<div asp-validation-summary="All" class="text-danger"></div>
+<h1>Schedule New Inspection</h1>
+<hr />
+<div class="row">
+    <div class="col-md-6">
+       
+
+        <form asp-action="Create">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="mb-3">
+            <label asp-for="PremisesId" class="form-label">Select Establishment</label>
+            <select asp-for="PremisesId" class="form-select" asp-items="ViewBag.PremisesId">
+                <option value="">-- Choose Premises --</option>
+            </select>
+            <span asp-validation-for="PremisesId" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="InspectionDate" class="form-label"></label>
+            <input asp-for="InspectionDate" class="form-control" type="date" />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Score" class="form-label">Score (0-100)</label>
+            <input asp-for="Score" class="form-control" type="number" />
+        </div>
+
+            <div class="form-group">
+                <label asp-for="Outcome"></label>
+                <input asp-for="Outcome" class="form-control" />
+                <span asp-validation-for="Outcome" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Notes"></label>
+                <textarea asp-for="Notes" class="form-control"></textarea>
+                <span asp-validation-for="Notes" class="text-danger"></span>
+            </div>
+
+        <button type="submit" class="btn btn-success">Save Report</button>
+    </form>
+    </div>
+</div>
