@@ -51,12 +51,19 @@ namespace Library.MVC.Data
             // --- 2. SEED 12 PREMISES ---
             if (!context.Premises.Any())
             {
+                // On peut spécifier la locale "en_GB" pour avoir des adresses qui sonnent britanniques
+                // (Optionnel : var premisesFaker = new Faker<Premises>("en_GB")...)
+
                 var towns = new[] { "London", "Manchester", "Liverpool" };
                 var ratings = new[] { "Low", "Medium", "High" };
 
                 var premisesFaker = new Faker<Premises>()
                     .RuleFor(p => p.Name, f => f.Company.CompanyName().Replace(",", "") + " " + f.PickRandom("Kitchen", "Bistro", "Cafe", "Grill"))
-                    .RuleFor(p => p.Address, f => f.Address.BuildingNumber() + " " + f.Address.StreetName())
+
+                    // CHANGEMENT ICI : StreetAddress génère "123 Main St" ou "45 Park Lane"
+                    // C'est beaucoup plus propre que de concaténer BuildingNumber et StreetName manuellement.
+                    .RuleFor(p => p.Address, f => f.Address.StreetAddress())
+
                     .RuleFor(p => p.Town, f => f.PickRandom(towns))
                     .RuleFor(p => p.RiskRating, f => f.PickRandom(ratings));
 
@@ -64,45 +71,66 @@ namespace Library.MVC.Data
                 await context.SaveChangesAsync();
             }
 
-            // --- 3. SEED 25 INSPECTIONS ---
+            // --- 3. SEED EXACTEMENT 25 INSPECTIONS ---
             if (!context.Inspections.Any())
             {
                 var premisesIds = context.Premises.Select(p => p.Id).ToList();
-
                 var inspectionFaker = new Faker<Inspection>()
                     .RuleFor(i => i.InspectionDate, f => f.Date.Recent(60))
-                    .RuleFor(i => i.Score, f => f.Random.Int(20, 100))
-                    .RuleFor(i => i.Outcome, (f, i) => i.Score >= 70 ? "Pass" : "Fail")
+                    // FORCE : On baisse le range du score pour garantir beaucoup d'échecs (Fail < 50)
+                    .RuleFor(i => i.Score, f => f.Random.Int(10, 60))
+                    .RuleFor(i => i.Outcome, (f, i) => i.Score >= 50 ? "Pass" : "Fail")
                     .RuleFor(i => i.Notes, f => f.Lorem.Sentence())
+                    // On s'assure de piocher dans tous les établissements
                     .RuleFor(i => i.PremisesId, f => f.PickRandom(premisesIds));
 
                 context.Inspections.AddRange(inspectionFaker.Generate(25));
                 await context.SaveChangesAsync();
             }
 
-            // --- 4. SEED 10 FOLLOW-UPS (Liés uniquement aux inspections Fail) ---
+            // --- 4. SEED EXACTEMENT 10 FOLLOW-UPS (5 Open / 5 Closed) ---
             if (!context.FollowUps.Any())
             {
-                // On ne prend que les inspections qui ont échoué
-                var failedIds = context.Inspections
-                    .Where(i => i.Score < 70)
+                // On récupère les IDs des 10 premières inspections (qu'on a forcées en 'Fail' plus haut)
+                // On trie par ID pour être sûr de l'ordre de traitement
+                var idsForSeed = context.Inspections
+                    .Where(i => i.Outcome == "Fail")
+                    .OrderBy(i => i.Id)
                     .Select(i => i.Id)
+                    .Take(10)
                     .ToList();
 
-                if (failedIds.Any())
-                {
-                    int count = 0;
-                    var followUpFaker = new Faker<FollowUp>()
-                        .RuleFor(f => f.InspectionId, f => failedIds[count++])
-                        .RuleFor(f => f.DueDate, (f, u) => count <= 4
-                            ? f.Date.Past(1)  // Overdue
-                            : f.Date.Soon(14)) // Future
-                        .RuleFor(f => f.Status, (f, u) => count <= 4 ? "Open" : "Closed");
+                // On initialise le compteur pour le Faker
+                int internalCount = 0;
 
-                    // On en génère 10 (ou le max possible si moins de 10 échecs)
-                    context.FollowUps.AddRange(followUpFaker.Generate(Math.Min(10, failedIds.Count)));
-                    await context.SaveChangesAsync();
-                }
+                var followUpFaker = new Faker<FollowUp>()
+                    .CustomInstantiator(f =>
+                    {
+                        // Sécurité au cas où le count dépasserait la liste
+                        if (internalCount >= idsForSeed.Count) return null;
+
+                        var inspectionId = idsForSeed[internalCount];
+
+                        // 0 à 4 = Open (Overdue) | 5 à 9 = Closed
+                        var status = (internalCount < 5) ? "Open" : "Closed";
+                        internalCount++;
+
+                        return new FollowUp
+                        {
+                            InspectionId = inspectionId,
+                            Status = status,
+                            // Date d'échéance dans le passé pour simuler du retard sur les 'Open'
+                            DueDate = f.Date.Past(1),
+                            // Date de fermeture uniquement si le statut est Closed
+                            ClosedDate = (status == "Closed") ? f.Date.Recent(3) : null
+                        };
+                    });
+
+                // On génère uniquement si on a trouvé les IDs
+                var itemsToSave = followUpFaker.Generate(idsForSeed.Count).Where(x => x != null).ToList();
+
+                context.FollowUps.AddRange(itemsToSave);
+                await context.SaveChangesAsync();
             }
         }
     }

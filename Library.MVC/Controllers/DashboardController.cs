@@ -17,11 +17,10 @@ public class DashboardController : Controller
         var firstDayOfMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
         var today = DateTime.Today;
 
-        // Start with a queryable object for filtering
         var inspectionsQuery = _context.Inspections.AsQueryable();
         var followUpsQuery = _context.FollowUps.AsQueryable();
 
-        // APPLY FILTERS
+        // FILTRES
         if (!string.IsNullOrEmpty(town))
         {
             inspectionsQuery = inspectionsQuery.Where(i => i.Premises.Town == town);
@@ -40,20 +39,22 @@ public class DashboardController : Controller
             SelectedTown = town,
             SelectedRiskRating = riskRating,
 
-            // Count inspections this month
+            // 1. Total inspections du MOIS
             TotalInspectionsThisMonth = await inspectionsQuery
                 .CountAsync(i => i.InspectionDate >= firstDayOfMonth),
 
-            // Count failed inspections (Assuming Score < 50 means Fail)
+            // 2. Échecs du MOIS (Score < 50)
             FailedInspectionsThisMonth = await inspectionsQuery
                 .CountAsync(i => i.InspectionDate >= firstDayOfMonth && i.Score < 50),
 
-            // Count Overdue Open Follow-ups
+            // 3. TOUS les Overdue (Indépendant de la date de l'inspection)
+            // On retire le filtre "firstDayOfMonth" ici pour avoir le total global
             OverdueOpenFollowUps = await followUpsQuery
                 .CountAsync(f => f.Status == "Open" && f.DueDate < today),
 
-            // Populate Town dropdown list from unique values in DB
-            Towns = await _context.Premises.Select(p => p.Town).Distinct().ToListAsync()
+            // LISTES
+            Towns = await _context.Premises.Select(p => p.Town).Distinct().OrderBy(t => t).ToListAsync(),
+            RiskRatings = await _context.Premises.Select(p => p.RiskRating).Distinct().OrderBy(r => r).ToListAsync()
         };
 
         return View(viewModel);

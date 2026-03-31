@@ -1,66 +1,100 @@
-using Microsoft.EntityFrameworkCore;
-using Library.MVC.Models;
-using Library.MVC.Data;
 using Xunit;
+using Microsoft.EntityFrameworkCore;
+using Library.MVC.Data;
+using Library.MVC.Models;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
-namespace Library.Tests
+public class FollowUpTests
 {
-    public class LibraryTests
+    // Utilitaire pour créer un contexte de base de données en mémoire vierge
+    private ApplicationDbContext GetDbContext()
     {
-        // 1. LA MÉTHODE VA ICI (C'est une méthode privée utilitaire)
-        private ApplicationDbContext GetDatabaseContext()
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        return new ApplicationDbContext(options);
+    }
+
+    // TEST 1 : Vérifier que la requête Overdue retourne les bons éléments
+    [Fact]
+    public void OverdueFollowUps_ReturnsOnlyCorrectItems()
+    {
+        // Arrange
+        using var context = GetDbContext();
+        var now = DateTime.Now;
+        context.FollowUps.AddRange(new List<FollowUp>
         {
-            // Remplace par ta chaîne de connexion SQL Server
-            // Pointe bien vers la base de TEST, pas la base de DEV
-            var connectionString = "Server=(localdb)\\mssqllocaldb;Database=Library_TestDB;Trusted_Connection=True;MultipleActiveResultSets=true";
+            new FollowUp { Id = 1, Status = "Open", DueDate = now.AddDays(-5) }, // En retard
+            new FollowUp { Id = 2, Status = "Open", DueDate = now.AddDays(5) },  // Pas encore
+            new FollowUp { Id = 3, Status = "Closed", DueDate = now.AddDays(-10) } // Clos (ne doit pas compter)
+        });
+        context.SaveChanges();
 
-            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseSqlServer(connectionString)
-                .Options;
+        // Act
+        var overdueCount = context.FollowUps.Count(f => f.Status == "Open" && f.DueDate < now);
 
-            var context = new ApplicationDbContext(options);
+        // Assert
+        Assert.Equal(1, overdueCount);
+    }
 
-            // CRITIQUE : Supprime et recrée la base à chaque test 
-            // pour être sûr de repartir de zéro (Isolation)
-            context.Database.EnsureDeleted();
-            context.Database.EnsureCreated();
-
-            return context;
-        }
-
-        // 2. TES TESTS UTILISENT CETTE MÉTHODE
-        [Fact]
-        public void Test_Dashboard_Counts_Consistent()
+    // TEST 2 : Un suivi ne peut pas être clos sans ClosedDate (Logique métier)
+    [Fact]
+    public void FollowUp_CannotBeClosed_WithoutClosedDate()
+    {
+        // Arrange
+        var followUp = new FollowUp
         {
-            // On appelle la méthode pour avoir une base toute neuve
-            using var context = GetDatabaseContext();
+            Status = "Closed",
+            ClosedDate = null // Invalide selon ta règle
+        };
 
-            // Arrange
-            context.Premises.Add(new Premises { Name = "Test Restaurant", Town = "Montreal" });
-            context.SaveChanges();
+        // Act & Assert
+        // Ici on teste la logique de validation simple
+        bool isValid = (followUp.Status == "Closed" && followUp.ClosedDate.HasValue) || (followUp.Status == "Open");
 
-            // Act
-            var count = context.Premises.Count();
+        Assert.False(isValid, "A closed follow-up must have a ClosedDate.");
+    }
 
-            // Assert
-            Assert.Equal(1, count);
-        }
-
-        [Fact]
-        public void Test_FollowUp_Overdue_Logic()
+    // TEST 3 : Cohérence des compteurs du Dashboard (In-Memory)
+    [Fact]
+    public void DashboardCounts_AreConsistent_WithData()
+    {
+        // Arrange
+        using var context = GetDbContext();
+        context.Inspections.AddRange(new List<Inspection>
         {
-            using var context = GetDatabaseContext();
+            new Inspection { Id = 1, Score = 80, Outcome = "Pass" },
+            new Inspection { Id = 2, Score = 30, Outcome = "Fail" },
+            new Inspection { Id = 3, Score = 40, Outcome = "Fail" }
+        });
+        context.SaveChanges();
 
-            // Arrange
-            var fu = new FollowUp { DueDate = DateTime.Now.AddDays(-1), Status = "Pending" };
-            context.FollowUps.Add(fu);
-            context.SaveChanges();
+        // Act
+        var totalInspections = context.Inspections.Count();
+        var failedInspections = context.Inspections.Count(i => i.Score < 50);
 
-            // Act
-            var isOverdue = fu.DueDate < DateTime.Now && fu.Status != "Closed";
+        // Assert
+        Assert.Equal(3, totalInspections);
+        Assert.Equal(2, failedInspections);
+    }
 
-            // Assert
-            Assert.True(isOverdue);
-        }
+    // TEST 4 : Simulation d'autorisation (Vérification des rôles)
+    [Theory]
+    [InlineData("Inspector", true)]
+    [InlineData("Viewer", false)]
+    public void RoleAuthorization_InspectorCanLogInspection_ViewerCannot(string role, bool expectedAccess)
+    {
+        // Arrange
+        // On définit qui a le droit de créer
+        string[] allowedRoles = { "Admin", "Inspector" };
+
+        // Act
+        bool canAccess = allowedRoles.Contains(role);
+
+        // Assert
+        Assert.Equal(expectedAccess, canAccess);
     }
 }

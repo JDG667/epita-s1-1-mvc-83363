@@ -21,5 +21,8 @@
   <ItemGroup>
     <Folder Include="Data\Migrations\" />
   </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Library.Domain\Library.Domain.csproj" />
+	</ItemGroup>
 
 </Project>

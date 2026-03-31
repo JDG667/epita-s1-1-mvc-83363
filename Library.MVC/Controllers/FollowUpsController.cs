@@ -52,39 +52,66 @@ public class FollowUpsController : Controller
     [Authorize(Roles = "Admin, Inspector")]
     public async Task<IActionResult> Create(FollowUp followUp)
     {
-        followUp.Id = 0;
+        // 1. Récupérer l'inspection actuelle pour connaître le lieu (PremisesId)
+        var currentInspection = await _context.Inspections
+            .Include(i => i.Premises)
+            .FirstOrDefaultAsync(i => i.Id == followUp.InspectionId);
 
-        // --- ÉTAPE CRUCIALE : On retire les champs qui bloquent la validation ---
-        ModelState.Remove("Inspection"); // On ne valide pas l'objet complet, seulement l'ID
-        ModelState.Remove("Outcome");    // On autorise le vide à la création
-        ModelState.Remove("Notes");      // On autorise le vide à la création
+        if (currentInspection == null) return NotFound();
+
+        // 2. REGLE : Existe-t-il déjà un Follow-up "Open" pour ce lieu ?
+        var alreadyHasOpenFollowUp = await _context.FollowUps
+            .AnyAsync(f => f.Status == "Open" && f.Inspection.PremisesId == currentInspection.PremisesId);
+
+        if (alreadyHasOpenFollowUp)
+        {
+            ModelState.AddModelError("", "This establishment already has an active follow-up. Close the existing one before creating a new one.");
+        }
+
+        // 3. Garder ta règle sur la date (DueDate < InspectionDate)
+        if (followUp.DueDate < currentInspection.InspectionDate)
+        {
+            ModelState.AddModelError("DueDate", "The due date cannot be earlier than the inspection date.");
+        }
+
+        ModelState.Remove("Inspection");
+        ModelState.Remove("Outcome");
+        ModelState.Remove("Notes");
 
         if (ModelState.IsValid)
         {
+            followUp.Id = 0;
             _context.Add(followUp);
             await _context.SaveChangesAsync();
-
-            // Redirection vers l'index des inspections après le succès
             return RedirectToAction("Index", "Inspections");
         }
 
-        // Si on arrive ici, c'est que le formulaire est encore invalide.
-        // Les erreurs s'afficheront grâce au asp-validation-summary dans ta vue.
         return View(followUp);
-    }
+    
+}
 
-    // POST: FollowUps/Complete/5
     [HttpPost]
     [Authorize(Roles = "Admin, Inspector")]
     public async Task<IActionResult> Complete(int id)
     {
         var followUp = await _context.FollowUps.FindAsync(id);
-        if (followUp != null)
+
+        if (followUp == null)
         {
-            // Logic to close the case
-            // LOG EVENT #8: Status Change/Workflow Completion
-            _logger.LogInformation("Follow-up ID {Id} has been successfully closed/completed.", id);
+            _logger.LogWarning("Fermeture échouée : FollowUp {Id} introuvable.", id);
+            return NotFound();
         }
+
+        // Mise à jour du statut et de la date
+        followUp.Status = "Closed";
+        followUp.ClosedDate = DateTime.Now; // La date d'aujourd'hui
+
+        _context.Update(followUp);
+        await _context.SaveChangesAsync();
+
+        // LOG VALIDE POUR L'ASSIGNMENT (Event #8)
+        _logger.LogInformation("Follow-up ID {Id} a été fermé avec succès le {Date}.", id, followUp.ClosedDate);
+
         return RedirectToAction(nameof(Index));
     }
 
