@@ -1,0 +1,27 @@
+﻿@model IEnumerable<Library.MVC.Models.StudentProfile>
+
+<h2>Student Contact List</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Full Name</th>
+            <th>Email Address</th>
+            <th>Phone Number</th>
+            <th>Student Number</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var student in Model)
+        {
+            <tr>
+                <td>@student.Name</td>
+                <td><a href="mailto:@student.Email">@student.Email</a></td>
+                <td>@student.Phone</td>
+                <td>@student.StudentNumber</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a asp-action="MyCourses" class="btn btn-secondary">Back to Courses</a>

@@ -1,0 +1,29 @@
+﻿@model Library.MVC.Models.AssignmentResult
+
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Modify Grade : @Model.Assignment.Title</h4>
+        </div>
+        <div class="card-body">
+            <p><strong>Student :</strong> @Model.Student.Name</p>
+
+            <form asp-action="EditAssignmentResult" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Id" />
+                <input type="hidden" asp-for="AssignmentId" />
+                <input type="hidden" asp-for="StudentProfileId" />
+
+                <div class="form-group mb-3">
+                    <label>Score (Max: @Model.Assignment.MaxScore)</label>
+                    <input asp-for="Score" class="form-control" type="number" step="0.1" max="@Model.Assignment.MaxScore" min="0" />
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-success">Register</button>
+                    <a asp-action="Gradebook" asp-route-id="@Model.Assignment.CourseId" class="btn btn-secondary">Go Back</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

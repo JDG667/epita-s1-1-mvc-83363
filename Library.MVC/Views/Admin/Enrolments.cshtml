@@ -1,0 +1,27 @@
+﻿@model IEnumerable<Library.MVC.Models.CourseEnrolment>
+
+<h2>All Student Enrolments</h2>
+
+<p><a asp-action="Enrol" asp-controller="Students" class="btn btn-primary">New Enrolment</a></p>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Student</th>
+            <th>Course</th>
+            <th>Enrolment Date</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Student.Name</td>
+                <td>@item.Course.Name</td>
+                <td>@item.EnrolDate.ToShortDateString()</td>
+                <td>@item.Status</td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -1,0 +1,43 @@
+﻿@model IEnumerable<Library.MVC.Models.CourseEnrolment>
+
+@{
+    // Liste des jours de la semaine (Lundi à Vendredi)
+    var weekDays = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday };
+}
+
+<div class="container-fluid mt-4">
+    <h2 class="mb-4">Weekschedule</h2>
+
+    <div class="row row-cols-1 row-cols-md-5 g-2">
+        @foreach (var day in weekDays)
+        {
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-primary text-white text-center fw-bold">
+                        @day.ToString()
+                    </div>
+                    <div class="card-body p-2">
+                        @* Ici, on simule la répartition des cours sur la semaine *@
+                        @foreach (var item in Model.GroupBy(e => e.CourseId))
+                        {
+                            var firstEnrolment = item.First();
+
+                            <div class="border-bottom mb-2 pb-2">
+                                <span class="badge bg-secondary mb-1">@firstEnrolment.Course.Name</span>
+                                <div class="small text-muted">
+                                    <strong>Students :</strong>
+                                    <ul class="list-unstyled mb-0 ps-2">
+                                        @foreach (var enrolment in item)
+                                        {
+                                            <li>• @enrolment.Student?.Name</li>
+                                        }
+                                    </ul>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

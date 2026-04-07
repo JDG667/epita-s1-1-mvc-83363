@@ -1,0 +1,58 @@
+﻿@model StudentGradebookViewModel
+
+<div class="container mt-4">
+    <h2>Mon notes : @Model.Student.Name</h2>
+
+    @foreach (var enrolment in Model.Enrolments)
+    {
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">@enrolment.Course.Name</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    @* Section Assignments *@
+                    <div class="col-md-6 border-end">
+                        <h5>Assignments (Continuous Assessment)</h5>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr><th>Title</th><th>Score</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var assign in enrolment.Course.Assignments)
+                                {
+                                    var res = assign.Results.FirstOrDefault();
+                                    <tr>
+                                        <td>@assign.Title</td>
+                                        <td class="fw-bold">@(res != null ? $"{res.Score}/{assign.MaxScore}" : "No grade yet")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @* Section Exams *@
+                    <div class="col-md-6">
+                        <h5>Exams (Final Results)</h5>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr><th>Exam</th><th>Grade</th><th>Score</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var exam in enrolment.Course.Exams)
+                                {
+                                    var res = exam.Results.FirstOrDefault();
+                                    <tr>
+                                        <td>@exam.Title</td>
+                                        <td><span class="badge bg-success">@(res?.Grade ?? "-")</span></td>
+                                        <td class="fw-bold">@(res != null ? $"{res.Score}%" : "N/A")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

@@ -1,0 +1,63 @@
+﻿@model IEnumerable<Library.MVC.Models.StudentProfile>
+
+<div class="animate__animated animate__fadeIn">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark"><i class="bi bi-people-fill text-warning"></i> Student Management</h2>
+            <p class="text-muted">Direct access to student contact details and records.</p>
+        </div>
+        <a asp-action="Create" class="btn btn-warning shadow-sm rounded-pill px-4 fw-bold">
+            <i class="bi bi-person-plus-fill me-2"></i>Add New Student
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-3">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Student Info</th>
+                        <th>Student Number</th>
+                        <th>Contact</th>
+                        <th>Date of Birth</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var student in Model)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <div class="fw-bold text-dark">@student.Name</div>
+                                <div class="small text-muted">ID: @student.IdentityUserId</div>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary-subtle text-secondary border">#@student.StudentNumber</span>
+                            </td>
+                            <td>
+                                <div class="small"><i class="bi bi-envelope-at me-1"></i> @student.Email</div>
+                                <div class="small"><i class="bi bi-telephone me-1"></i> @student.Phone</div>
+                            </td>
+                            <td>
+                                <div class="small text-muted">@student.DateOfBirth.ToShortDateString()</div>
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group">
+                                    <a asp-action="Edit" asp-route-id="@student.Id" class="btn btn-sm btn-outline-primary border-0" title="Edit">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </a>
+                                    <a asp-action="Details" asp-route-id="@student.Id" class="btn btn-sm btn-outline-info border-0" title="View Records">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a asp-action="Delete" asp-route-id="@student.Id" class="btn btn-sm btn-outline-danger border-0" title="Remove">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

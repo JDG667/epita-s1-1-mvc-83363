@@ -1,0 +1,59 @@
+﻿@model Library.MVC.Models.StudentProfile
+
+@{
+    ViewData["Title"] = "Edit Student";
+}
+
+<div class="container mt-4">
+    <h2>Edit Student Profile</h2>
+    <hr />
+    <form asp-action="Edit">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        @* IMPORTANT : Garder les IDs cachés *@
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="IdentityUserId" />
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label asp-for="StudentNumber" class="form-label"></label>
+                @* Le readonly sert uniquement à l'affichage visuel *@
+                <input asp-for="StudentNumber" class="form-control" readonly style="background-color: #f8f9fa;" />
+
+                @* CETTE LIGNE garantit que le matricule est envoyé proprement au Model Binder *@
+                <input type="hidden" asp-for="StudentNumber" />
+
+                <span asp-validation-for="StudentNumber" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+
+        @* AJOUT DU CHAMP PHONE ICI *@
+        <div class="mb-3">
+            <label asp-for="Phone" class="form-label">Phone Number</label>
+            <input asp-for="Phone" class="form-control" placeholder="ex: +353 87 123 4567" />
+            <span asp-validation-for="Phone" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Address" class="form-label"></label>
+            <input asp-for="Address" class="form-control" />
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+        </div>
+    </form>
+</div>
+

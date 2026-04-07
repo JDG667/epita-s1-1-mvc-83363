@@ -1,0 +1,86 @@
+﻿@model Library.MVC.Models.GradebookViewModel
+
+@{
+    ViewData["Title"] = "Gradebook - " + Model.Course.Name;
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">Gradebook: @Model.Course.Name</h3>
+            <span class="badge bg-info">@Model.Students.Count Students</span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered border-secondary">
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th class="align-middle text-start">Student Name</th>
+                            @foreach (var assign in Model.Assignments)
+                            {
+                                <th class="bg-primary text-white">
+                                    @assign.Title <br />
+                                    <small>(Max: @assign.MaxScore)</small>
+                                </th>
+                            }
+                            @foreach (var exam in Model.Exams)
+                            {
+                                <th class="bg-success text-white">
+                                    @exam.Title <br />
+                                    <small>(Grade)</small>
+                                </th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var student in Model.Students)
+                        {
+                            <tr>
+                                <td class="fw-bold align-middle">@student.Name</td>
+
+                                @* Colonnes des Devoirs (Assignments) *@
+                                @foreach (var assign in Model.Assignments)
+                                {
+                                    var res = assign.Results?.FirstOrDefault(r => r.StudentProfileId == student.Id);
+                                    <td class="text-center align-middle">
+                                        @if (res != null)
+                                        {
+                                            <div class="fw-bold">@res.Score%</div>
+                                            <a asp-action="EditAssignmentResult" asp-route-id="@res.Id" class="btn btn-sm btn-link p-0 text-decoration-none">Edit</a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                }
+
+                                @* Colonnes des Examens *@
+                                @foreach (var exam in Model.Exams)
+                                {
+                                    var res = exam.Results?.FirstOrDefault(r => r.StudentProfileId == student.Id);
+                                    <td class="text-center align-middle">
+                                        @if (res != null)
+                                        {
+                                            <span class="badge bg-success fs-6">@res.Grade</span>
+                                            <div class="small text-muted">@res.Score%</div>
+                                            <a asp-action="EditExamResult" asp-route-id="@res.Id" class="btn btn-sm btn-link p-0 text-decoration-none">Edit</a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+            <a asp-action="Index" class="btn btn-secondary">Back to Courses</a>
+            <span class="text-muted small">Note: Click "Edit" to modify scores or grades.</span>
+        </div>
+    </div>
+</div>

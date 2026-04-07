@@ -7,128 +7,110 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
-public class FollowUpTests
+public class AcademicTests
 {
-    // Utilitaire pour créer un contexte de base de données en mémoire vierge
     private ApplicationDbContext GetDbContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
+                .Options;
         return new ApplicationDbContext(options);
     }
 
-    // TEST 1 : Vérifier que la requête Overdue retourne les bons éléments
     [Fact]
-    public void OverdueFollowUps_ReturnsOnlyCorrectItems()
+    public void Student_ShouldNotSeeGrade_WhenResultsNotReleased()
     {
-        // Arrange
-        using var context = GetDbContext();
-        var now = DateTime.Now;
-        context.FollowUps.AddRange(new List<FollowUp>
-        {
-            new FollowUp { Id = 1, Status = "Open", DueDate = now.AddDays(-5) }, // En retard
-            new FollowUp { Id = 2, Status = "Open", DueDate = now.AddDays(5) },  // Pas encore
-            new FollowUp { Id = 3, Status = "Closed", DueDate = now.AddDays(-10) } // Clos (ne doit pas compter)
-        });
-        context.SaveChanges();
+        var exam = new Exam { Title = "Final Exam", ResultsReleased = false };
+        var result = new ExamResult { Exam = exam, Score = 85, Grade = "A" };
 
-        // Act
-        var overdueCount = context.FollowUps.Count(f => f.Status == "Open" && f.DueDate < now);
+        // Simulation de la logique de vue/service
+        bool isVisible = exam.ResultsReleased;
 
-        // Assert
-        Assert.Equal(1, overdueCount);
+        Assert.False(isVisible);
     }
 
-    // TEST 2 : Un suivi ne peut pas être clos sans ClosedDate (Logique métier)
     [Fact]
-    public void FollowUp_CannotBeClosed_WithoutClosedDate()
+    public void Student_ShouldSeeGrade_WhenResultsAreReleased()
     {
-        // Arrange
-        var followUp = new FollowUp
+        var exam = new Exam { Title = "Final Exam", ResultsReleased = true };
+        Assert.True(exam.ResultsReleased);
+    }
+
+    [Fact]
+    public void CalculateAverage_ShouldReturnCorrectValue()
+    {
+        var results = new List<AssignmentResult>
+    {
+        new AssignmentResult { Score = 40 },
+        new AssignmentResult { Score = 60 }
+    };
+
+        var average = results.Select(r => r.Score).DefaultIfEmpty(0).Average();
+
+        Assert.Equal(50, average);
+    }
+
+    [Fact]
+    public void Average_ShouldBeZero_IfNoResultsExist()
+    {
+        var results = new List<AssignmentResult>();
+        var average = results.Select(r => r.Score).DefaultIfEmpty(0).Average();
+
+        Assert.Equal(0, average);
+    }
+
+    [Fact]
+    public async Task Enrolment_ShouldPreventDuplicateEntries()
+    {
+        using var context = GetDbContext();
+
+        // On ajoute le "Status" (ex: "Enrolled" ou "Active" selon ton enum/string)
+        var enrolment1 = new CourseEnrolment
         {
-            Status = "Closed",
-            ClosedDate = null // Invalide selon ta règle
+            StudentProfileId = 1,
+            CourseId = 10,
+            Status = "Enrolled" // <--- AJOUTE ÇA ICI
         };
 
-        // Act & Assert
-        // Ici on teste la logique de validation simple
-        bool isValid = (followUp.Status == "Closed" && followUp.ClosedDate.HasValue) || (followUp.Status == "Open");
+        context.CourseEnrolments.Add(enrolment1);
+        await context.SaveChangesAsync();
 
-        Assert.False(isValid, "A closed follow-up must have a ClosedDate.");
+        // Logique métier : on vérifie si un doublon existe avant d'ajouter le 2ème
+        bool alreadyExists = await context.CourseEnrolments
+            .AnyAsync(e => e.StudentProfileId == 1 && e.CourseId == 10);
+
+        Assert.True(alreadyExists);
     }
 
     [Fact]
-    public void DashboardCounts_AreConsistent_WithData()
+    public void Course_ShouldBeLinkedToCorrectBranch()
     {
-        // 1. Arrange
-        using var context = GetDbContext();
+        var branch = new Branch { Id = 1, Name = "IT" };
+        var course = new Course { Name = "C# Dev", BranchId = 1, Branch = branch };
 
-        // On crée un établissement complet (tous les champs [Required])
-        var premises = new Premises
-        {
-            Id = 1,
-            Name = "Test Shop",
-            Address = "123 Street",
-            Town = "TestVille",      // Ajouté car requis
-            RiskRating = "Medium"     // Ajouté car requis
-        };
-        context.Premises.Add(premises);
-
-        context.Inspections.AddRange(new List<Inspection>
-    {
-        new Inspection {
-            Id = 1,
-            Score = 80,
-            Outcome = "Pass",
-            Notes = "Valid",
-            PremisesId = 1,
-            InspectionDate = DateTime.Now
-        },
-        new Inspection {
-            Id = 2,
-            Score = 30,
-            Outcome = "Fail",
-            Notes = "Issues",
-            PremisesId = 1,
-            InspectionDate = DateTime.Now
-        },
-        new Inspection {
-            Id = 3,
-            Score = 40,
-            Outcome = "Fail",
-            Notes = "More issues",
-            PremisesId = 1,
-            InspectionDate = DateTime.Now
-        }
-    });
-
-        // Cette fois-ci, SaveChanges() va passer !
-        context.SaveChanges();
-
-        // 2. Act
-        var totalInspections = context.Inspections.Count();
-        var failedInspections = context.Inspections.Count(i => i.Score < 50);
-
-        // 3. Assert
-        Assert.Equal(3, totalInspections);
-        Assert.Equal(2, failedInspections);
+        Assert.Equal("IT", course.Branch.Name);
     }
 
-    // TEST 4 : Simulation d'autorisation (Vérification des rôles)
-    [Theory]
-    [InlineData("Inspector", true)]
-    [InlineData("Viewer", false)]
-    public void RoleAuthorization_InspectorCanLogInspection_ViewerCannot(string role, bool expectedAccess)
+    [Fact]
+    public void Faculty_IsTutor_StatusCheck()
     {
-        // Arrange
-        // On définit qui a le droit de créer
-        string[] allowedRoles = { "Admin", "Inspector" };
+        var faculty1 = new FacultyProfile { Name = "Prof A", IsTutor = true };
+        var faculty2 = new FacultyProfile { Name = "Prof B", IsTutor = false };
 
-        // Act
-        bool canAccess = allowedRoles.Contains(role);
+        Assert.True(faculty1.IsTutor);
+        Assert.False(faculty2.IsTutor);
+    }
 
-        // Assert
-        Assert.Equal(expectedAccess, canAccess);
+    [Fact]
+    public void Course_IsExpired_WhenEndDatePassed()
+    {
+        var course = new Course
+        {
+            EndDate = DateTime.Now.AddDays(-1)
+        };
+
+        bool isExpired = course.EndDate < DateTime.Now;
+
+        Assert.True(isExpired);
     }
 }

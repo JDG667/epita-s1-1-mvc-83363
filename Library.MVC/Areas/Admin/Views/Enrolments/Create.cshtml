@@ -1,0 +1,29 @@
+﻿@model Library.MVC.Models.CourseEnrolment
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white"><h4>New Enrolment</h4></div>
+        <div class="card-body">
+            <form asp-action="Create">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Select Student</label>
+                    <select asp-for="StudentProfileId" class="form-select" asp-items="ViewBag.StudentProfileId"></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Select Course</label>
+                    <select asp-for="CourseId" class="form-select" asp-items="ViewBag.CourseId"></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Status</label>
+                    <select asp-for="Status" class="form-select">
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="Pending">Pending</option>
+                    </select>
+                </div>
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary px-4">Confirm Enrolment</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary px-4">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

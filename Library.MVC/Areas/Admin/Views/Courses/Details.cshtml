@@ -1,0 +1,57 @@
+﻿@model Library.MVC.Models.Course
+
+@{
+    ViewData["Title"] = "Course Details";
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="bi bi-info-circle-fill me-2"></i> Course Information</h4>
+            <span class="badge bg-light text-dark">ID: #@Model.Id</span>
+        </div>
+        <div class="card-body p-4">
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <label class="text-muted small text-uppercase fw-bold">Course Name</label>
+                    <p class="fs-4 fw-bold text-primary">@Model.Name</p>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <label class="text-muted small text-uppercase fw-bold">Campus / Branch</label>
+                    <p class="fs-5">
+                        <i class="bi bi-building me-2"></i>
+                        @(Model.Branch?.Name ?? "No Branch Assigned")
+                    </p>
+                </div>
+            </div>
+
+            <hr />
+
+            <div class="row mt-3">
+                <div class="col-md-6 mb-3">
+                    <div class="p-3 bg-light rounded shadow-sm">
+                        <label class="text-muted small text-uppercase fw-bold d-block">Start Date</label>
+                        <span class="fs-5"><i class="bi bi-calendar-event me-2"></i>@Model.StartDate.ToLongDateString()</span>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="p-3 bg-light rounded shadow-sm">
+                        <label class="text-muted small text-uppercase fw-bold d-block">End Date</label>
+                        <span class="fs-5"><i class="bi bi-calendar-check me-2"></i>@Model.EndDate.ToLongDateString()</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-5 border-top pt-3">
+                <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">
+                    <i class="bi bi-arrow-left"></i> Back to List
+                </a>
+                <div>
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary rounded-pill px-4 me-2">
+                        <i class="bi bi-pencil"></i> Edit Course
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

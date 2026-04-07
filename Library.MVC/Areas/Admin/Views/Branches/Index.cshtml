@@ -1,0 +1,31 @@
+﻿@model IEnumerable<Library.MVC.Models.Branch>
+
+<div class="d-flex justify-content-between mb-4">
+    <h2 class="fw-bold">Branches Management</h2>
+    <a asp-action="Create" class="btn btn-primary rounded-pill shadow-sm">
+        <i class="bi bi-plus-lg"></i> Add New Branch
+    </a>
+</div>
+
+<table class="table table-hover align-middle shadow-sm bg-white rounded">
+    <thead class="table-dark">
+        <tr>
+            <th>Name</th>
+            <th>Address</th>
+            <th class="text-end">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Name</td>
+                <td>@item.Address</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-info">Edit</a>
+                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-info">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

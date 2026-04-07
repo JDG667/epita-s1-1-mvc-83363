@@ -1,0 +1,41 @@
+﻿@model IEnumerable<Library.MVC.Models.Exam>
+
+<h2>Exam Result Management</h2>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Exam Title</th>
+            <th>Course</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Title</td>
+                <td>@item.Course.Name</td>
+                <td>
+                    @if (item.ResultsReleased)
+                    {
+                        <span class="badge bg-success">Released</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning">Provisional</span>
+                    }
+                </td>
+                <td>
+                    <form asp-action="ReleaseResults" method="post" style="display:inline;">
+                        <input type="hidden" name="examId" value="@item.Id" />
+                        <button type="submit" class="btn btn-sm @(item.ResultsReleased ? "btn-danger" : "btn-success")">
+                            @(item.ResultsReleased ? "Unrelease" : "Release Results")
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

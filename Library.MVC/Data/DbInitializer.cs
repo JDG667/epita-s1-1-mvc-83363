@@ -15,121 +15,198 @@ namespace Library.MVC.Data
 
             context.Database.EnsureCreated();
 
-            // --- ÉTAPE 0 : NETTOYAGE DES DONNÉES EXISTANTES ---
-            context.FollowUps.RemoveRange(context.FollowUps);
-            context.Inspections.RemoveRange(context.Inspections);
-            context.Premises.RemoveRange(context.Premises);
-            await context.SaveChangesAsync();
-
-            // --- 1. ROLES (Ajout de Member) ---
-            string[] roles = { "Admin", "Inspector", "Member" };
+            // --- 1. ROLES ---
+            string[] roles = { "Admin", "Faculty", "Student" };
             foreach (var role in roles)
             {
                 if (!await roleManager.RoleExistsAsync(role))
                     await roleManager.CreateAsync(new IdentityRole(role));
             }
 
-            // --- 1.5. USERS (Admin, Inspector, Member) ---
-            var password = "Password123!";
-            var users = new (string Email, string Role)[]
+            // --- 2. ADMIN ---
+            var adminEmail = "admin@uni.com";
+            if (await userManager.FindByEmailAsync(adminEmail) == null)
             {
-                ("admin@safety.com", "Admin"),
-                ("inspector@safety.com", "Inspector"),
-                ("member@safety.com", "Member") // Voici ton utilisateur Member
-            };
+                var adminUser = new IdentityUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
+                await userManager.CreateAsync(adminUser, "Admin123!");
+                await userManager.AddToRoleAsync(adminUser, "Admin");
+            }
 
-            foreach (var u in users)
+            // --- 3. BRANCHES ---
+            if (!context.Branches.Any())
             {
-                if (await userManager.FindByEmailAsync(u.Email) == null)
+                context.Branches.AddRange(new List<Branch> {
+                    new Branch { Name = "Dublin Main Campus", Address = "101 O'Connell St, Dublin" },
+                    new Branch { Name = "Cork Branch", Address = "202 Lee Road, Cork" },
+                    new Branch { Name = "Galway Tech Hub", Address = "303 Atlantic Way, Galway" }
+                });
+                await context.SaveChangesAsync();
+            }
+            var branches = await context.Branches.ToListAsync();
+
+            // --- 4. FACULTY ---
+            if (!context.FacultyProfiles.Any())
+            {
+                var faker = new Faker();
+                for (int i = 1; i <= 3; i++)
                 {
-                    var newUser = new IdentityUser { UserName = u.Email, Email = u.Email, EmailConfirmed = true };
-                    await userManager.CreateAsync(newUser, password);
-                    await userManager.AddToRoleAsync(newUser, u.Role);
-                }
-            }
-
-            // --- 2. SEED 12 PREMISES ---
-            if (!context.Premises.Any())
-            {
-                // On peut spécifier la locale "en_GB" pour avoir des adresses qui sonnent britanniques
-                // (Optionnel : var premisesFaker = new Faker<Premises>("en_GB")...)
-
-                var towns = new[] { "London", "Manchester", "Liverpool" };
-                var ratings = new[] { "Low", "Medium", "High" };
-
-                var premisesFaker = new Faker<Premises>()
-                    .RuleFor(p => p.Name, f => f.Company.CompanyName().Replace(",", "") + " " + f.PickRandom("Kitchen", "Bistro", "Cafe", "Grill"))
-
-                    // CHANGEMENT ICI : StreetAddress génère "123 Main St" ou "45 Park Lane"
-                    // C'est beaucoup plus propre que de concaténer BuildingNumber et StreetName manuellement.
-                    .RuleFor(p => p.Address, f => f.Address.StreetAddress())
-
-                    .RuleFor(p => p.Town, f => f.PickRandom(towns))
-                    .RuleFor(p => p.RiskRating, f => f.PickRandom(ratings));
-
-                context.Premises.AddRange(premisesFaker.Generate(12));
-                await context.SaveChangesAsync();
-            }
-
-            // --- 3. SEED EXACTEMENT 25 INSPECTIONS ---
-            if (!context.Inspections.Any())
-            {
-                var premisesIds = context.Premises.Select(p => p.Id).ToList();
-                var inspectionFaker = new Faker<Inspection>()
-                    .RuleFor(i => i.InspectionDate, f => f.Date.Recent(60))
-                    // FORCE : On baisse le range du score pour garantir beaucoup d'échecs (Fail < 50)
-                    .RuleFor(i => i.Score, f => f.Random.Int(10, 60))
-                    .RuleFor(i => i.Outcome, (f, i) => i.Score >= 50 ? "Pass" : "Fail")
-                    .RuleFor(i => i.Notes, f => f.Lorem.Sentence())
-                    // On s'assure de piocher dans tous les établissements
-                    .RuleFor(i => i.PremisesId, f => f.PickRandom(premisesIds));
-
-                context.Inspections.AddRange(inspectionFaker.Generate(25));
-                await context.SaveChangesAsync();
-            }
-
-            // --- 4. SEED EXACTEMENT 10 FOLLOW-UPS (5 Open / 5 Closed) ---
-            if (!context.FollowUps.Any())
-            {
-                // On récupère les IDs des 10 premières inspections (qu'on a forcées en 'Fail' plus haut)
-                // On trie par ID pour être sûr de l'ordre de traitement
-                var idsForSeed = context.Inspections
-                    .Where(i => i.Outcome == "Fail")
-                    .OrderBy(i => i.Id)
-                    .Select(i => i.Id)
-                    .Take(10)
-                    .ToList();
-
-                // On initialise le compteur pour le Faker
-                int internalCount = 0;
-
-                var followUpFaker = new Faker<FollowUp>()
-                    .CustomInstantiator(f =>
+                    var email = $"faculty{i}@uni.com";
+                    if (await userManager.FindByEmailAsync(email) == null)
                     {
-                        // Sécurité au cas où le count dépasserait la liste
-                        if (internalCount >= idsForSeed.Count) return null;
-
-                        var inspectionId = idsForSeed[internalCount];
-
-                        // 0 à 4 = Open (Overdue) | 5 à 9 = Closed
-                        var status = (internalCount < 5) ? "Open" : "Closed";
-                        internalCount++;
-
-                        return new FollowUp
+                        var user = new IdentityUser { UserName = email, Email = email, EmailConfirmed = true };
+                        var result = await userManager.CreateAsync(user, "Faculty123!");
+                        if (result.Succeeded)
                         {
-                            InspectionId = inspectionId,
-                            Status = status,
-                            // Date d'échéance dans le passé pour simuler du retard sur les 'Open'
-                            DueDate = f.Date.Past(1),
-                            // Date de fermeture uniquement si le statut est Closed
-                            ClosedDate = (status == "Closed") ? f.Date.Recent(3) : null
+                            await userManager.AddToRoleAsync(user, "Faculty");
+                            context.FacultyProfiles.Add(new FacultyProfile
+                            {
+                                IdentityUserId = user.Id,
+                                Name = $"Professor {faker.Name.LastName()}",
+                                Email = email,
+                                Phone = $"087-123-456{i}",
+                                IsTutor = (i == 1)
+                            });
+                        }
+                    }
+                }
+                await context.SaveChangesAsync();
+            }
+            var allFaculty = await context.FacultyProfiles.ToListAsync();
+
+            // --- 5. COURSES ---
+            if (!context.Courses.Any())
+            {
+                int facultyIndex = 0;
+                foreach (var b in branches)
+                {
+                    context.Courses.AddRange(new List<Course>
+                    {
+                        new Course { Name = $"Web Dev ({b.Name})", BranchId = b.Id, StartDate = DateTime.Now, EndDate = DateTime.Now.AddMonths(6), FacultyProfileId = allFaculty[facultyIndex % allFaculty.Count].Id },
+                        new Course { Name = $"Data Science ({b.Name})", BranchId = b.Id, StartDate = DateTime.Now, EndDate = DateTime.Now.AddMonths(8), FacultyProfileId = allFaculty[(facultyIndex + 1) % allFaculty.Count].Id },
+                        new Course { Name = $"Cyber Sec ({b.Name})", BranchId = b.Id, StartDate = DateTime.Now.AddMonths(1), EndDate = DateTime.Now.AddMonths(7), FacultyProfileId = allFaculty[(facultyIndex + 2) % allFaculty.Count].Id }
+                    });
+                    facultyIndex++;
+                }
+                await context.SaveChangesAsync();
+            }
+            var allCourses = await context.Courses.ToListAsync();
+
+            // --- 6. STUDENTS + ENROLMENTS (ALIGNED BY BRANCH) ---
+            if (!context.StudentProfiles.Any())
+            {
+                var faker = new Faker("en");
+                for (int i = 1; i <= 10; i++)
+                {
+                    var firstName = faker.Name.FirstName();
+                    var lastName = faker.Name.LastName();
+                    var email = $"{firstName.ToLower()}.{lastName.ToLower()}@uni.com";
+
+                    var user = new IdentityUser { UserName = email, Email = email, EmailConfirmed = true };
+                    var result = await userManager.CreateAsync(user, "Student123!");
+
+                    if (result.Succeeded)
+                    {
+                        await userManager.AddToRoleAsync(user, "Student");
+
+                        // Déterminer la branche de l'étudiant (pour cohérence)
+                        var studentBranch = branches[faker.Random.Number(0, branches.Count - 1)];
+
+                        var profile = new StudentProfile
+                        {
+                            IdentityUserId = user.Id,
+                            Name = $"{firstName} {lastName}",
+                            Email = email,
+                            StudentNumber = 202600 + i,
+                            DateOfBirth = faker.Date.Past(10, DateTime.Now.AddYears(-18)),
+                            Address = faker.Address.FullAddress(),
+                            Phone = faker.Phone.PhoneNumber("08#-###-####")
                         };
+                        context.StudentProfiles.Add(profile);
+                        await context.SaveChangesAsync();
+
+                        // FILTRE : On n'inscrit l'élève qu'aux cours de SA branche
+                        var availableCourses = allCourses.Where(c => c.BranchId == studentBranch.Id).ToList();
+                        var myCourses = availableCourses.OrderBy(x => Guid.NewGuid()).Take(Math.Min(2, availableCourses.Count)).ToList();
+
+                        foreach (var c in myCourses)
+                        {
+                            context.CourseEnrolments.Add(new CourseEnrolment
+                            {
+                                StudentProfileId = profile.Id,
+                                CourseId = c.Id,
+                                EnrolDate = DateTime.Now.AddDays(-faker.Random.Number(1, 30)),
+                                Status = "Confirmed"
+                            });
+                        }
+                    }
+                }
+                await context.SaveChangesAsync();
+
+                // --- 7. DATA GENERATION (ATTENDANCE, ASSIGNMENTS, EXAMS) ---
+                var enrolments = await context.CourseEnrolments.ToListAsync();
+                var fakerData = new Faker();
+
+                foreach (var enrolment in enrolments)
+                {
+                    // A. Attendance
+                    for (int j = 0; j < 5; j++)
+                    {
+                        context.AttendanceRecords.Add(new AttendanceRecord
+                        {
+                            CourseEnrolmentId = enrolment.Id,
+                            Date = DateTime.Now.AddDays(-(j * 7)).Date, // Une fois par semaine
+                            Present = fakerData.Random.Bool(0.85f)
+                        });
+                    }
+
+                    // B. Assignments
+                    var assignment = await context.Assignments.FirstOrDefaultAsync(a => a.CourseId == enrolment.CourseId);
+                    if (assignment == null)
+                    {
+                        assignment = new Assignment
+                        {
+                            CourseId = enrolment.CourseId,
+                            Title = "Project Alpha",
+                            MaxScore = 100,
+                            DueDate = DateTime.Now.AddDays(14)
+                        };
+                        context.Assignments.Add(assignment);
+                        await context.SaveChangesAsync();
+                    }
+
+                    context.AssignmentResults.Add(new AssignmentResult
+                    {
+                        AssignmentId = assignment.Id,
+                        StudentProfileId = enrolment.StudentProfileId,
+                        Score = fakerData.Random.Number(40, 100),
+                        Feedback = "Well structured work."
                     });
 
-                // On génère uniquement si on a trouvé les IDs
-                var itemsToSave = followUpFaker.Generate(idsForSeed.Count).Where(x => x != null).ToList();
+                    // C. Exams
+                    var exam = await context.Exams.FirstOrDefaultAsync(e => e.CourseId == enrolment.CourseId);
+                    if (exam == null)
+                    {
+                        exam = new Exam
+                        {
+                            CourseId = enrolment.CourseId,
+                            Title = "Final Exam",
+                            Date = DateTime.Now.AddMonths(1),
+                            MaxScore = 100,
+                            ResultsReleased = true
+                        };
+                        context.Exams.Add(exam);
+                        await context.SaveChangesAsync();
+                    }
 
-                context.FollowUps.AddRange(itemsToSave);
+                    int score = fakerData.Random.Number(35, 100);
+                    context.ExamResults.Add(new ExamResult
+                    {
+                        ExamId = exam.Id,
+                        StudentProfileId = enrolment.StudentProfileId,
+                        Score = score,
+                        Grade = score >= 70 ? "A" : score >= 55 ? "B" : score >= 40 ? "C" : "D"
+                    });
+                }
                 await context.SaveChangesAsync();
             }
         }
